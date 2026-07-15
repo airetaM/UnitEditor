@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenRA Unit Comparator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-dark: #0a0e17;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2236;
+            --border: #1e2a45;
+            --border-light: #2a3a5c;
+            --text-primary: #e8edf5;
+            --text-secondary: #8892a8;
+            --text-muted: #5a647a;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --accent-purple: #a855f7;
+            --accent-cyan: #06b6d4;
+            --health-color: #22c55e;
+            --damage-color: #ef4444;
+            --speed-color: #06b6d4;
+            --armor-color: #a855f7;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.04) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(6, 182, 212, 0.04) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 3rem 0 2.5rem;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent);
+        }
+
+        .header-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 100px;
+            padding: 0.35rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #e8edf5 0%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.75rem;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 300;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            background: var(--bg-card);
+            border: 2px dashed var(--border-light);
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-section:hover,
+        .upload-section.drag-over {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.05);
+            box-shadow: 0 0 40px var(--accent-glow);
+        }
+
+        .upload-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+        }
+
+        .upload-section:hover .upload-icon {
+            transform: translateY(-4px);
+        }
+
+        .upload-icon svg {
+            width: 28px;
+            height: 28px;
+            color: var(--accent);
+        }
+
+        .upload-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-section p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.5rem;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #2563eb);
+            color: white;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-secondary);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-success {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-success:hover {
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* File input hidden */
+        #fileInput {
+            display: none;
+        }
+
+        /* Upload feedback */
+        .upload-feedback {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .upload-feedback.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: var(--accent-green);
+        }
+
+        .upload-feedback.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        /* Controls Bar */
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 0 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .controls-bar .info-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .controls-bar .info-text strong {
+            color: var(--text-primary);
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .search-box:focus-within {
+            border-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .search-box svg {
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .search-box input {
+            background: none;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            width: 200px;
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Table */
+        .table-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            min-width: 700px;
+        }
+
+        thead {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        th {
+            padding: 1rem 1.25rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+            user-select: none;
+        }
+
+        th.sortable {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        th.sortable:hover {
+            color: var(--text-primary);
+        }
+
+        th.sortable .sort-icon {
+            display: inline-block;
+            margin-left: 4px;
+            opacity: 0.3;
+        }
+
+        th.sortable:hover .sort-icon,
+        th.sortable.active .sort-icon {
+            opacity: 1;
+        }
+
+        td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.95rem;
+            transition: background 0.2s;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr {
+            transition: background 0.15s ease;
+            cursor: default;
+        }
+
+        tbody tr:hover {
+            background: var(--bg-card-hover);
+        }
+
+        tbody tr.selected {
+            background: rgba(59, 130, 246, 0.08);
+            border-left: 3px solid var(--accent);
+        }
+
+        .unit-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Stat Bars */
+        .stat-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .stat-bar-track {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 100px;
+            overflow: hidden;
+            min-width: 100px;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.6s ease;
+        }
+
+        .stat-bar-fill.health {
+            background: linear-gradient(90deg, #22c55e, #4ade80);
+        }
+
+        .stat-bar-fill.speed {
+            background: linear-gradient(90deg, #06b6d4, #22d3ee);
+        }
+
+        .stat-bar-fill.damage {
+            background: linear-gradient(90deg, #ef4444, #f87171);
+        }
+
+        .stat-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+            min-width: 36px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .damage-value {
+            font-weight: 600;
+            font-size: 1rem;
+            min-width: 136px;
+            text-align: right;
+            color: var(--damage-color);
+        }
+
+        .stat-value.health { color: var(--health-color); }
+        .stat-value.speed { color: var(--speed-color); }
+        .stat-value.damage { color: var(--damage-color); }
+        .stat-value.cost { color: var(--accent-yellow); }
+        .stat-value.range { color: var(--accent-purple); }
+
+        /* Armor Badge */
+        .armor-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.75rem;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .armor-badge.heavy {
+            background: rgba(168, 85, 247, 0.12);
+            color: #c084fc;
+            border: 1px solid rgba(168, 85, 247, 0.2);
+        }
+
+        .armor-badge.medium {
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .armor-badge.light {
+            background: rgba(34, 197, 94, 0.12);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .armor-badge.none {
+            background: rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        /* Comparison Highlight */
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            opacity: 0.4;
+        }
+
+        .empty-state h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .empty-state p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            max-width: 400px;
+            margin: 0 auto 1.5rem;
+        }
+
+        /* YAML Format Hint */
+        .format-hint {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .format-hint code {
+            display: block;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: left;
+            line-height: 1.8;
+            max-width: 360px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .slide-up {
+            animation: slideUp 0.4s ease;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 100px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Weapon sub-row */
+        .weapon-row td {
+            border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,0.01);
+            padding: 0.3rem 1.25rem;
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+        .weapon-row .weapon-name {
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .weapon-row .weapon-stat {
+            display: inline-block;
+            margin-right: 1rem;
+            white-space: nowrap;
+        }
+        .weapon-row .weapon-stat span {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+        .weapon-row .weapon-damage {
+            color: #ff0000;
+            font-size: 0.78rem;
+        }
+        .weapon-row .weapon-versus {
+            color: #eab308;
+            font-size: 0.78rem;
+        }
+
+        /* Editable cells */
+        .editable-int, .editable-text {
+            cursor: text;
+            padding: 2px 4px;
+            border-radius: 4px;
+            outline: none;
+            min-width: 30px;
+            display: inline-block;
+        }
+        .editable-int:focus, .editable-text:focus {
+            background: rgba(59,130,246,0.15);
+            box-shadow: 0 0 0 1px var(--accent);
+        }
+        .editable-int.modified, .editable-text.modified {
+            background: rgba(234,179,8,0.12);
+            box-shadow: 0 0 0 1px var(--accent-yellow);
+        }
+
+        /* Save button */
+        .btn-save {
+            background: var(--accent-green);
+            color: #000;
+            border: none;
+        }
+        .btn-save:hover {
+            background: #16a34a;
+            box-shadow: 0 0 20px rgba(34,197,94,0.3);
+        }
+
+        /* YAML Files List */
+        .yaml-files-section {
+            margin-bottom: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+        }
+        .yaml-file-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.4rem 0.6rem; border-radius: 6px;
+            font-size: 0.85rem; color: var(--text-secondary);
+            background: rgba(255,255,255,0.02);
+        }
+        .yaml-file-item:hover { background: rgba(255,255,255,0.05); }
+        .yaml-file-item .file-icon { margin-right: 0.5rem; color: var(--accent); }
+        .btn-delete-file {
+            background: transparent; border: none; color: var(--accent-red);
+            cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;
+        }
+        .btn-delete-file:hover { background: rgba(239,68,68,0.1); }
+
+        /* Unit color coding (15 colors) - framed border, no overlap */
+        tr.unit-color-0  td { border-top:5px solid rgba(148,163,184,0.4); border-bottom:5px solid rgba(148,163,184,0.4); }
+        tr.unit-color-0  td:first-child { border-left:5px solid rgba(148,163,184,0.4); }
+        tr.unit-color-0  td:last-child  { border-right:5px solid rgba(148,163,184,0.4); }
+        tr.unit-color-1  td { border-top:5px solid rgba(251,191,36,0.4); border-bottom:5px solid rgba(251,191,36,0.4); }
+        tr.unit-color-1  td:first-child { border-left:5px solid rgba(251,191,36,0.4); }
+        tr.unit-color-1  td:last-child  { border-right:5px solid rgba(251,191,36,0.4); }
+        tr.unit-color-2  td { border-top:5px solid rgba(96,165,250,0.4); border-bottom:5px solid rgba(96,165,250,0.4); }
+        tr.unit-color-2  td:first-child { border-left:5px solid rgba(96,165,250,0.4); }
+        tr.unit-color-2  td:last-child  { border-right:5px solid rgba(96,165,250,0.4); }
+        tr.unit-color-3  td { border-top:5px solid rgba(167,139,250,0.4); border-bottom:5px solid rgba(167,139,250,0.4); }
+        tr.unit-color-3  td:first-child { border-left:5px solid rgba(167,139,250,0.4); }
+        tr.unit-color-3  td:last-child  { border-right:5px solid rgba(167,139,250,0.4); }
+        tr.unit-color-4  td { border-top:5px solid rgba(52,211,153,0.4); border-bottom:5px solid rgba(52,211,153,0.4); }
+        tr.unit-color-4  td:first-child { border-left:5px solid rgba(52,211,153,0.4); }
+        tr.unit-color-4  td:last-child  { border-right:5px solid rgba(52,211,153,0.4); }
+        tr.unit-color-5  td { border-top:5px solid rgba(244,114,182,0.4); border-bottom:5px solid rgba(244,114,182,0.4); }
+        tr.unit-color-5  td:first-child { border-left:5px solid rgba(244,114,182,0.4); }
+        tr.unit-color-5  td:last-child  { border-right:5px solid rgba(244,114,182,0.4); }
+        tr.unit-color-6  td { border-top:5px solid rgba(34,211,238,0.4); border-bottom:5px solid rgba(34,211,238,0.4); }
+        tr.unit-color-6  td:first-child { border-left:5px solid rgba(34,211,238,0.4); }
+        tr.unit-color-6  td:last-child  { border-right:5px solid rgba(34,211,238,0.4); }
+        tr.unit-color-7  td { border-top:5px solid rgba(251,146,60,0.4); border-bottom:5px solid rgba(251,146,60,0.4); }
+        tr.unit-color-7  td:first-child { border-left:5px solid rgba(251,146,60,0.4); }
+        tr.unit-color-7  td:last-child  { border-right:5px solid rgba(251,146,60,0.4); }
+        tr.unit-color-8  td { border-top:5px solid rgba(163,230,53,0.4); border-bottom:5px solid rgba(163,230,53,0.4); }
+        tr.unit-color-8  td:first-child { border-left:5px solid rgba(163,230,53,0.4); }
+        tr.unit-color-8  td:last-child  { border-right:5px solid rgba(163,230,53,0.4); }
+        tr.unit-color-9  td { border-top:5px solid rgba(232,121,249,0.4); border-bottom:5px solid rgba(232,121,249,0.4); }
+        tr.unit-color-9  td:first-child { border-left:5px solid rgba(232,121,249,0.4); }
+        tr.unit-color-9  td:last-child  { border-right:5px solid rgba(232,121,249,0.4); }
+        tr.unit-color-10 td { border-top:5px solid rgba(45,212,191,0.4); border-bottom:5px solid rgba(45,212,191,0.4); }
+        tr.unit-color-10 td:first-child { border-left:5px solid rgba(45,212,191,0.4); }
+        tr.unit-color-10 td:last-child  { border-right:5px solid rgba(45,212,191,0.4); }
+        tr.unit-color-11 td { border-top:5px solid rgba(252,211,77,0.4); border-bottom:5px solid rgba(252,211,77,0.4); }
+        tr.unit-color-11 td:first-child { border-left:5px solid rgba(252,211,77,0.4); }
+        tr.unit-color-11 td:last-child  { border-right:5px solid rgba(252,211,77,0.4); }
+        tr.unit-color-12 td { border-top:5px solid rgba(129,140,248,0.4); border-bottom:5px solid rgba(129,140,248,0.4); }
+        tr.unit-color-12 td:first-child { border-left:5px solid rgba(129,140,248,0.4); }
+        tr.unit-color-12 td:last-child  { border-right:5px solid rgba(129,140,248,0.4); }
+        tr.unit-color-13 td { border-top:5px solid rgba(251,113,133,0.4); border-bottom:5px solid rgba(251,113,133,0.4); }
+        tr.unit-color-13 td:first-child { border-left:5px solid rgba(251,113,133,0.4); }
+        tr.unit-color-13 td:last-child  { border-right:5px solid rgba(251,113,133,0.4); }
+        tr.unit-color-14 td { border-top:5px solid rgba(94,234,212,0.4); border-bottom:5px solid rgba(94,234,212,0.4); }
+        tr.unit-color-14 td:first-child { border-left:5px solid rgba(94,234,212,0.4); }
+        tr.unit-color-14 td:last-child  { border-right:5px solid rgba(94,234,212,0.4); }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .header h1 { font-size: 2rem; }
+            .controls-bar { flex-direction: column; align-items: stretch; }
+            .search-box input { width: 100%; }
+            .upload-actions { flex-direction: column; }
+            td, th { padding: 0.75rem; }
+            .stat-bar-track { min-width: 60px; }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header slide-up">
+            <div class="header-badge">
+                <a href="/profiles" style="color:inherit;text-decoration:none;display:flex;align-items:center;gap:0.5rem;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                    Profile
+                </a>
+            </div>
+            <h1 th:text="${profile.name}">Profil</h1>
+            <p>Compare OpenRA units &mdash; Upload YAML files with unit metadata.</p>
+        </header>
+
+        <!-- Upload Section -->
+        <div class="upload-section slide-up" id="uploadSection">
+            <div class="upload-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </div>
+            <h2>Import YAML File</h2>
+            <p>Upload a YAML file with unit metadata to compare them in the table.</p>
+            <div class="upload-actions">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    Select File
+                </button>
+                <button class="btn btn-danger" onclick="clearUnits()" id="clearBtn" style="display:none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                    Clear All
+                </button>
+            </div>
+            <input type="file" id="fileInput" accept=".yaml,.yml">
+        <!-- Upload Feedback -->
+            <div class="upload-feedback" id="uploadFeedback"></div>
+            <div class="format-hint">
+                Accepted YAML format (OpenRA-Style):
+                <code>
+                    1TNK:<br>
+                    &nbsp;&nbsp;Health:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;HP: 23000<br>
+                    &nbsp;&nbsp;Armor:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Type: Heavy<br>
+                    &nbsp;&nbsp;Mobile:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Speed: 113<br>
+                    &nbsp;&nbsp;Valued:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Cost: 700<br>
+                    &nbsp;&nbsp;RevealsShroud:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;Range: 5c0
+                </code>
+            </div>
+        </div>
+
+        <!-- YAML Files List -->
+        <div class="yaml-files-section slide-up" id="yamlFilesSection">
+            <h3 style="font-size:1rem; margin-bottom:0.75rem; color:var(--text-secondary);">Uploaded Files</h3>
+            <div id="yamlFilesList" style="display:flex; flex-direction:column; gap:0.4rem;"></div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar slide-up">
+            <div class="info-text" id="infoText">
+                <strong id="unitCount" th:text="${#lists.size(units)}">0</strong> units loaded
+            </div>
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search by name..." oninput="filterTable()">
+            </div>
+            <button class="btn btn-save" onclick="saveProfile()" title="Save changes to profile">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save
+            </button>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrapper slide-up">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="sortable" onclick="sortTable(0)" data-col="0">
+                                Unit <span class="sort-icon">▲</span>
+                            </th>
+                            <th class="sortable" onclick="sortTable(1)" data-col="1">
+                                Armor <span class="sort-icon">▲</span>
+                            </th>
+                            <th class="sortable" onclick="sortTable(2)" data-col="2">
+                                Cost <span class="sort-icon">▲</span>
+                            </th>
+                            <th class="sortable" onclick="sortTable(3)" data-col="3">
+                                Health <span class="sort-icon">▲</span>
+                            </th>
+                            <th class="sortable" onclick="sortTable(4)" data-col="4">
+                                Speed <span class="sort-icon">▲</span>
+                            </th>
+                            <th class="sortable" onclick="sortTable(5)" data-col="5">
+                                Sight <span class="sort-icon">▲</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="unitTableBody">
+                        <tr th:each="unit : ${units}" class="fade-in">
+                            <td class="unit-name" th:text="${unit.name}">-</td>
+                            <td>
+                                <span class="armor-badge" th:classappend="|armor-badge ${#strings.toLowerCase(unit.armortype)}|" th:text="${unit.armortype}">-</span>
+                            </td>
+                            <td><span class="stat-value cost" th:text="${unit.cost}">0</span></td>
+                            <td>
+                                <div class="stat-bar-container">
+                                    <div class="stat-bar-track">
+                                        <div class="stat-bar-fill health" th:style="|width: ${unit.health}px; max-width: 100%|"></div>
+                                    </div>
+                                    <span class="stat-value health" th:text="${unit.health}">0</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="stat-bar-container">
+                                    <div class="stat-bar-track">
+                                        <div class="stat-bar-fill speed" th:style="|width: ${unit.speed}px; max-width: 100%|"></div>
+                                    </div>
+                                    <span class="stat-value speed" th:text="${unit.speed}">0</span>
+                                </div>
+                            </td>
+                            <td><span class="stat-value range" th:text="${unit.revealsShroudRange}">-</span></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(units)}">
+                            <td colspan="6">
+                                <div class="empty-state">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="12" y1="8" x2="12" y2="16"/>
+                                        <line x1="8" y1="12" x2="16" y2="12"/>
+                                    </svg>
+                                    <h3>No units loaded</h3>
+                                    <p>Upload a YAML file with unit metadata to see data.</p>
+                                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                        Select File
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; padding: 2rem 0; color: var(--text-muted); font-size: 0.8rem;">
+            OpenRA Unit Comparator &mdash; built with Spring Boot
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const profileId = /*[[${profile.id}]]*/ 0;
+        let sortOrder = {};
+        let unitsData = [];
+        let weaponsData = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            reloadUnits();
+            loadYamlFiles();
+        });
+
+        async function reloadUnits() {
+            try {
+                const [unitsRes, weaponsRes] = await Promise.all([
+                    fetch('/api/profiles/' + profileId + '/units'),
+                    fetch('/api/profiles/' + profileId + '/weapons')
+                ]);
+                unitsData = await unitsRes.json();
+                weaponsData = await weaponsRes.json();
+                if (!Array.isArray(unitsData)) unitsData = [];
+                if (!Array.isArray(weaponsData)) weaponsData = [];
+                renderTable(unitsData);
+                updateClearButton();
+            } catch (e) {
+                unitsData = [];
+                weaponsData = [];
+                renderTable([]);
+            }
+        }
+
+        // File upload handling
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            uploadFile(file);
+            this.value = '';
+        });
+
+        // Drag & drop
+        const uploadSection = document.getElementById('uploadSection');
+        uploadSection.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        });
+        uploadSection.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+        });
+        uploadSection.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        });
+
+        function uploadFile(file) {
+            const feedback = document.getElementById('uploadFeedback');
+            feedback.className = 'upload-feedback';
+            feedback.textContent = 'Uploading...';
+            feedback.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/api/profiles/' + profileId + '/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.text())
+            .then(data => {
+                const result = JSON.parse(data);
+                feedback.className = 'upload-feedback ' + (result.success ? 'success' : 'error');
+                feedback.textContent = result.message;
+                if (result.success) setTimeout(() => { reloadUnits(); loadYamlFiles(); }, 500);
+            })
+            .catch(err => {
+                feedback.className = 'upload-feedback error';
+                feedback.textContent = 'Error: ' + err.message;
+            });
+        }
+
+        function clearUnits() {
+            fetch('/api/profiles/' + profileId + '/clear', { method: 'POST' })
+                .then(res => res.text())
+                .then(data => {
+                    const result = JSON.parse(data);
+                    const feedback = document.getElementById('uploadFeedback');
+                    feedback.className = 'upload-feedback success';
+                    feedback.textContent = result.message;
+                    feedback.style.display = 'block';
+                    reloadUnits();
+                });
+        }
+
+        function renderTable(units) {
+            const tbody = document.getElementById('unitTableBody');
+            if (!units || units.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <line x1="12" y1="8" x2="12" y2="16"/>
+                                    <line x1="8" y1="12" x2="16" y2="12"/>
+                                </svg>
+                                <h3>No units loaded</h3>
+                                <p>Upload a YAML file with unit metadata to see data.</p>
+                                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                                    Select File
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('unitCount').textContent = '0';
+                return;
+            }
+
+            document.getElementById('unitCount').textContent = units.length;
+
+            // Find max damage across all weapons for bar scaling
+            let maxDamage = 0;
+            weaponsData.forEach(w => { if (w.damage > maxDamage) maxDamage = w.damage; });
+
+            let html = '';
+            units.forEach((unit, index) => {
+                const armorClass = (unit.armortype || '').toLowerCase();
+                const colorClass = 'unit-color-' + (index % 15);
+                html += `
+                    <tr class="fade-in ${colorClass}" style="animation-delay: ${index * 0.03}s" data-unit-id="${unit.id}">
+                        <td class="unit-name">${escapeHtml(unit.name)}</td>
+                        <td>
+                            <span class="armor-badge ${armorClass ? 'armor-badge ' + armorClass : 'armor-badge none'}">${escapeHtml(unit.armortype || 'None')}</span>
+                        </td>
+                        <td><span class="stat-value cost editable-int" contenteditable="true" data-field="cost" data-unit-id="${unit.id}">${unit.cost ?? 0}</span></td>
+                        <td>
+                            <div class="stat-bar-container">
+                                <div class="stat-bar-track">
+                                    <div class="stat-bar-fill health" style="width: ${Math.min(unit.health, 200)}px; max-width: 100%"></div>
+                                </div>
+                                <span class="stat-value health editable-int" contenteditable="true" data-field="health" data-unit-id="${unit.id}">${unit.health ?? 0}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="stat-bar-container">
+                                <div class="stat-bar-track">
+                                    <div class="stat-bar-fill speed" style="width: ${Math.min(unit.speed, 200)}px; max-width: 100%"></div>
+                                </div>
+                                <span class="stat-value speed editable-int" contenteditable="true" data-field="speed" data-unit-id="${unit.id}">${unit.speed ?? 0}</span>
+                            </div>
+                        </td>
+                        <td><span class="stat-value range editable-text" contenteditable="true" data-field="revealsShroudRange" data-unit-id="${unit.id}">${escapeHtml(unit.revealsShroudRange || '-')}</span></td>
+                    </tr>
+                `;
+                // Weapon sub-rows
+                if (unit.weapons && unit.weapons.length > 0) {
+                    unit.weapons.forEach(wname => {
+                        const w = weaponsData.find(wp => wp.name === wname);
+                        if (!w) return;
+                        html += `<tr class="weapon-row ${colorClass}" data-weapon-id="${w.id}">
+                            <td colspan="6">
+                                <span class="weapon-name">${escapeHtml(w.name)}</span>
+                                ${w.reloadDelay ? `<span class="weapon-stat"><span>Reload delay:</span> <span class="editable-int" contenteditable="true" data-field="reloadDelay" data-weapon-id="${w.id}">${w.reloadDelay}</span></span>` : ''}
+                                ${w.range && w.range !== '-' ? `<span class="weapon-stat"><span>Range:</span> <span class="editable-text" contenteditable="true" data-field="range" data-weapon-id="${w.id}">${escapeHtml(w.range)}</span></span>` : ''}
+                                ${w.burst ? `<span class="weapon-stat"><span>Burst:</span> <span class="editable-int" contenteditable="true" data-field="burst" data-weapon-id="${w.id}">${w.burst}</span></span>` : ''}
+                                ${w.projectileSpeed ? `<span class="weapon-stat"><span>ProjectileSpeed:</span> <span class="editable-int" contenteditable="true" data-field="projectileSpeed" data-weapon-id="${w.id}">${w.projectileSpeed}</span></span>` : ''}
+                                ${w.launchAngle ? `<span class="weapon-stat"><span>Angle:</span> <span class="editable-int" contenteditable="true" data-field="launchAngle" data-weapon-id="${w.id}">${w.launchAngle}°</span></span>` : ''}
+                                ${w.inaccuracy && w.inaccuracy !== '-' ? `<span class="weapon-stat"><span>Inaccuracy:</span> <span class="editable-text" contenteditable="true" data-field="inaccuracy" data-weapon-id="${w.id}">${escapeHtml(w.inaccuracy)}</span></span>` : ''}
+                                ${w.contrailLength ? `<span class="weapon-stat"><span>Contrail:</span> <span class="editable-int" contenteditable="true" data-field="contrailLength" data-weapon-id="${w.id}">${w.contrailLength}</span></span>` : ''}
+                                ${w.spread ? `<span class="weapon-stat"><span>Spread:</span> <span class="editable-int" contenteditable="true" data-field="spread" data-weapon-id="${w.id}">${w.spread}</span></span>` : ''}
+                                <br><div class="stat-bar-container" style="max-width:200px; margin-top:4px;">
+                                    <span class="damage-value damage">Damage: ${w.damage ?? 0}</span>
+                                    <div class="stat-bar-track">
+                                        <div class="stat-bar-fill damage" style="width: ${maxDamage > 0 ? Math.round(w.damage / maxDamage * 100) : 0}%; max-width: 100%"></div>
+                                    </div>
+                                </div>
+                                ${(w.versusNone || w.versusWood || w.versusLight || w.versusHeavy || w.versusConcrete) ? `<span class="weapon-versus">vs None:<span class="editable-int" contenteditable="true" data-field="versusNone" data-weapon-id="${w.id}">${w.versusNone??0}</span> Wood:<span class="editable-int" contenteditable="true" data-field="versusWood" data-weapon-id="${w.id}">${w.versusWood??0}</span> Light:<span class="editable-int" contenteditable="true" data-field="versusLight" data-weapon-id="${w.id}">${w.versusLight??0}</span> Heavy:<span class="editable-int" contenteditable="true" data-field="versusHeavy" data-weapon-id="${w.id}">${w.versusHeavy??0}</span> Concrete:<span class="editable-int" contenteditable="true" data-field="versusConcrete" data-weapon-id="${w.id}">${w.versusConcrete??0}</span></span>` : ''}
+                            </td>
+                        </tr>`;
+                    });
+                }
+            });
+            tbody.innerHTML = html;
+        }
+
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = unitsData.filter(u =>
+                (u.name || '').toLowerCase().includes(query) ||
+                (u.armortype || '').toLowerCase().includes(query)
+            );
+            renderTable(filtered);
+        }
+
+        function sortTable(colIndex) {
+            const currentOrder = sortOrder[colIndex] || 'asc';
+            const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+            sortOrder[colIndex] = newOrder;
+
+            // Update sort icons
+            document.querySelectorAll('th.sortable').forEach(th => {
+                th.classList.remove('active');
+                const icon = th.querySelector('.sort-icon');
+                if (icon) icon.textContent = '▲';
+            });
+            const th = document.querySelector(`th.sortable[data-col="${colIndex}"]`);
+            if (th) {
+                th.classList.add('active');
+                const icon = th.querySelector('.sort-icon');
+                if (icon) icon.textContent = newOrder === 'asc' ? '▲' : '▼';
+            }
+
+            const sorted = [...unitsData].sort((a, b) => {
+                let valA, valB;
+                switch(colIndex) {
+                    case 0: valA = (a.name || '').toLowerCase(); valB = (b.name || '').toLowerCase(); break;
+                    case 1: valA = (a.armortype || '').toLowerCase(); valB = (b.armortype || '').toLowerCase(); break;
+                    case 2: valA = a.cost ?? 0; valB = b.cost ?? 0; break;
+                    case 3: valA = a.health ?? 0; valB = b.health ?? 0; break;
+                    case 4: valA = a.speed ?? 0; valB = b.speed ?? 0; break;
+                    case 5: valA = (a.revealsShroudRange || '').toLowerCase(); valB = (b.revealsShroudRange || '').toLowerCase(); break;
+                    default: return 0;
+                }
+                if (typeof valA === 'string') {
+                    return newOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return newOrder === 'asc' ? valA - valB : valB - valA;
+            });
+            renderTable(sorted);
+        }
+
+        function updateClearButton() {
+            const btn = document.getElementById('clearBtn');
+            const count = parseInt(document.getElementById('unitCount').textContent);
+            btn.style.display = count > 0 ? 'inline-flex' : 'none';
+        }
+
+        const modifiedFields = new Set();
+
+        function trackEdit(el) {
+            const val = el.textContent.trim();
+            const orig = el.dataset.original || '';
+            if (el.classList.contains('editable-int') && !/^-?\d+$/.test(val)) {
+                el.textContent = orig;
+                delete el.dataset.original;
+                return;
+            }
+
+            const id = el.dataset.unitId || el.dataset.weaponId;
+            const field = el.dataset.field;
+            const key = (el.dataset.unitId ? 'unit:' : 'weapon:') + id + '|' + field;
+            const isInt = el.classList.contains('editable-int');
+
+            if (val !== orig) {
+                el.classList.add('modified');
+                modifiedFields.add(key);
+                if (el.dataset.unitId) {
+                    const uid = parseInt(el.dataset.unitId);
+                    const unit = unitsData.find(u => u.id === uid);
+                    if (unit) unit[field] = isInt ? parseInt(val) : val;
+                } else {
+                    const wid = parseInt(el.dataset.weaponId);
+                    const weapon = weaponsData.find(w => w.id === wid);
+                    if (weapon) weapon[field] = isInt ? parseInt(val) : val;
+                }
+            } else {
+                el.classList.remove('modified');
+                modifiedFields.delete(key);
+            }
+            delete el.dataset.original;
+        }
+
+        document.getElementById('unitTableBody').addEventListener('focusin', function(e) {
+            const el = e.target.closest('.editable-int, .editable-text');
+            if (el && !el.dataset.original) {
+                el.dataset.original = el.textContent.trim();
+            }
+        });
+
+        document.getElementById('unitTableBody').addEventListener('focusout', function(e) {
+            const el = e.target.closest('.editable-int, .editable-text');
+            if (el) trackEdit(el);
+        });
+
+        document.getElementById('unitTableBody').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.closest('.editable-int, .editable-text')) {
+                e.preventDefault();
+                e.target.blur();
+            }
+        });
+
+        async function saveProfile() {
+            const feedback = document.getElementById('uploadFeedback');
+            if (modifiedFields.size === 0) {
+                feedback.textContent = 'No changes to save.';
+                feedback.className = 'upload-feedback error';
+                feedback.style.display = 'block';
+                return;
+            }
+            const unitUpdates = [];
+            const weaponUpdates = [];
+            modifiedFields.forEach(key => {
+                const [typeAndId, field] = key.split('|');
+                const [type, idStr] = typeAndId.split(':');
+                const id = parseInt(idStr);
+                if (type === 'unit') {
+                    const unit = unitsData.find(u => u.id === id);
+                    if (unit) unitUpdates.push({ id, field, value: unit[field] });
+                } else {
+                    const weapon = weaponsData.find(w => w.id === id);
+                    if (weapon) weaponUpdates.push({ id, field, value: weapon[field] });
+                }
+            });
+
+            feedback.textContent = 'Saving...';
+            feedback.className = 'upload-feedback';
+            feedback.style.display = 'block';
+
+            try {
+                const res = await fetch('/api/profiles/' + profileId + '/units', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ unitUpdates, weaponUpdates })
+                });
+                const text = await res.text();
+                let result;
+                try { result = JSON.parse(text); } catch (e) { result = { success: false, message: text }; }
+                feedback.textContent = result.message || 'Unknown response';
+                feedback.className = 'upload-feedback ' + (result.success ? 'success' : 'error');
+                if (result.success) {
+                    await downloadProfileYaml();
+                    modifiedFields.clear();
+                    document.querySelectorAll('.modified').forEach(el => el.classList.remove('modified'));
+                }
+            } catch (e) {
+                feedback.textContent = 'Error: ' + e.message;
+                feedback.className = 'upload-feedback error';
+            }
+        }
+
+        async function downloadProfileYaml() {
+            const unitIds = [...new Set(
+                [...modifiedFields].filter(k => k.startsWith('unit:')).map(k => k.split('|')[0].split(':')[1])
+            )];
+            const weaponIds = [...new Set(
+                [...modifiedFields].filter(k => k.startsWith('weapon:')).map(k => k.split('|')[0].split(':')[1])
+            )];
+            const uq = unitIds.length ? '?unitIds=' + unitIds.join(',') : '';
+            const wq = weaponIds.length ? '?weaponIds=' + weaponIds.join(',') : '';
+            const downloads = [
+                unitIds.length ? fetch('/api/profiles/' + profileId + '/download' + uq).then(r => r.ok ? r.blob().then(b => ({ name: 'exported_units.yaml', blob: b })) : null) : null,
+                weaponIds.length ? fetch('/api/profiles/' + profileId + '/download-weapons' + wq).then(r => r.ok ? r.blob().then(b => ({ name: 'exported_weapons.yaml', blob: b })) : null) : null
+            ];
+            const results = await Promise.all(downloads);
+            results.filter(Boolean).forEach(({ name, blob }) => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = name; a.click();
+                setTimeout(() => window.URL.revokeObjectURL(url), 200);
+            });
+        }
+
+        async function loadYamlFiles() {
+            try {
+                const res = await fetch('/api/profiles/' + profileId + '/yaml-files');
+                const files = await res.json();
+                const list = document.getElementById('yamlFilesList');
+                if (!files || files.length === 0) {
+                    list.innerHTML = '<span style="color:var(--text-muted);font-size:0.8rem;">No files uploaded</span>';
+                    return;
+                }
+                list.innerHTML = files.map(f =>
+                    `<div class="yaml-file-item">
+                        <span><span class="file-icon">📄</span>${escapeHtml(f.fileName)}</span>
+                        <button class="btn-delete-file" onclick="deleteYamlFile(${f.id})" title="Delete file">✕</button>
+                    </div>`
+                ).join('');
+            } catch (e) { /* ignore */ }
+        }
+
+        async function deleteYamlFile(fileId) {
+            if (!confirm('Delete this file?')) return;
+            await fetch('/api/profiles/' + profileId + '/yaml-files/' + fileId, { method: 'DELETE' });
+            loadYamlFiles();
+            setTimeout(() => reloadUnits(), 300);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
